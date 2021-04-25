@@ -8,6 +8,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.pynguins.archesky.archeskyauthserver.config.ApplicationProperties;
+import com.pynguins.archesky.archeskyauthserver.dto.Role;
 import org.springframework.stereotype.Service;
 
 import javax.naming.AuthenticationException;
@@ -15,7 +16,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.util.*;
 
 import static java.lang.String.format;
 
@@ -34,18 +35,41 @@ public class TokenService {
         final Jwk jwk = provider.get(jwt.getKeyId());
         final Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
         algorithm.verify(jwt);
-        if (jwt.getIssuer() != format(applicationProperties.getIssuer(), domain)) {
+        if (!jwt.getIssuer().equals(format(applicationProperties.getIssuer(), domain))) {
             throw new AuthenticationException(
-                    "Token validation failed: " +
-                            "Invalid issuer (Expected: '${format(properties.issuer, domain)}' but got '${jwt.issuer}')"
+                    format(
+                            "Token validation failed: Invalid issuer (Expected: '%s' but got '%s')",
+                            format(applicationProperties.getIssuer(), domain),
+                            jwt.getIssuer()
+                    )
             );
         }
         if (jwt.getExpiresAt().before(Calendar.getInstance().getTime())) {
             throw new AuthenticationException(
-                    "Token validation failed: " +
-                            "The token expired at ${sdf.format(jwt.expiresAt)}"
+                    format(
+                            "Token validation failed: The token expired at %s",
+                            sdf.format(jwt.getExpiresAt())
+                    )
             );
         }
         return jwt;
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<Role> createRoleList(DecodedJWT validatedToken) {
+        final List<Role> roleList = new ArrayList<>();
+        final String realmAccess = "realm_access";
+        if (validatedToken.getClaims().containsKey(realmAccess)) {
+            for (Map.Entry<String, Object> role : validatedToken.getClaim(realmAccess).asMap().entrySet()) {
+                roleList.add(new Role(realmAccess, ((ArrayList<String>) role.getValue())));
+            }
+        }
+        final String resourceAccess = "resource_access";
+        if (validatedToken.getClaims().containsKey(resourceAccess)) {
+            for (Map.Entry<String, Object> role : validatedToken.getClaim(resourceAccess).asMap().entrySet()) {
+                roleList.add(new Role(role.getKey(), ((LinkedHashMap<String, ArrayList<String>>) role.getValue()).get("roles")));
+            }
+        }
+        return roleList;
     }
 }
