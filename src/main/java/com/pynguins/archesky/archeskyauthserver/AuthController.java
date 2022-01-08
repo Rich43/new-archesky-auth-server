@@ -5,6 +5,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.pynguins.archesky.archeskyauthserver.dto.Role;
 import com.pynguins.archesky.archeskyauthserver.dto.Token;
 import com.pynguins.archesky.archeskyauthserver.service.TokenService;
+import org.slf4j.Logger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 
+import static org.slf4j.LoggerFactory.getLogger;
 import static org.springframework.http.HttpStatus.FOUND;
 
 @RestController
@@ -40,6 +42,7 @@ public class AuthController {
     }
 
     private final TokenService tokenService;
+    private final Logger log = getLogger(this.getClass());
 
     public AuthController(TokenService tokenService) {
         this.tokenService = tokenService;
@@ -52,6 +55,8 @@ public class AuthController {
 
     @RequestMapping(value = "/auth", method = RequestMethod.POST)
     public Token checkToken(@RequestBody CheckTokenRequestBody checkTokenRequestBody) throws MalformedURLException, AuthenticationException, JwkException {
+        log.info("Checking token for hostname: {}", checkTokenRequestBody.getHostname());
+        log.info("Token: {}", checkTokenRequestBody.getToken());
         final DecodedJWT validatedToken = tokenService.validateToken(
                 checkTokenRequestBody.getToken(),
                 checkTokenRequestBody.getHostname()
