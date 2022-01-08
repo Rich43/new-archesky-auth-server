@@ -62,7 +62,7 @@ public class AuthController {
                 checkTokenRequestBody.getHostname()
         );
         final List<Role> roleList = tokenService.createRoleList(validatedToken);
-        return new Token(
+        final Token token = new Token(
                 validatedToken.getClaim("preferred_username").asString(),
                 validatedToken.getClaim("given_name").asString(),
                 validatedToken.getClaim("family_name").asString(),
@@ -70,5 +70,7 @@ public class AuthController {
                 validatedToken.getClaim("email").asString(),
                 roleList
         );
+        log.info("Token validated: {}", token);
+        return token;
     }
 }
